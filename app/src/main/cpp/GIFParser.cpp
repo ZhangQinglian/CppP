@@ -27,19 +27,19 @@ void GIFParser::init()
     seek+=3;
     LOGD("signature : %s\n",getSignature());
     LOGD("version : %s\n",getVersion());
-    char lsd[7];
+    char *lsd = new char[7];
     memcpy(lsd, this->buffer + seek, 7);
     seek += 7;
     // LSD
-    LSD lsdObject(lsd);
-    this->lsd = &lsdObject;
+    LSD *lsdObject = new LSD(lsd);
+    this->lsd = lsdObject;
     this->lsd->dump();
     if(this->lsd->isGCT()){
-        char gctBuffer[this->lsd->getGlobalColorTableSize()*3] ;
+        unsigned char *gctBuffer = new unsigned char[this->lsd->getGlobalColorTableSize()*3] ;
         memcpy(gctBuffer, this->buffer + seek, this->lsd->getGlobalColorTableSize()*3);
         seek += this->lsd->getGlobalColorTableSize()*3;
-        GCT gctObject(gctBuffer,this->lsd->getGlobalColorTableSize()*3);
-        this->gct = &gctObject;
+        GCT *gctObject = new GCT(gctBuffer,this->lsd->getGlobalColorTableSize()*3);
+        this->gct = gctObject;
         this->gct->dump();
     }
 
@@ -95,12 +95,10 @@ void GIFParser::init()
                     }
                 }while (subBlockSize == 255);
 
-           
-                this->appExt = &appExtObject;
-                this->appExt->setIdentifier(identifier);
-                this->appExt->setAuthenticationCode(authenticationCode);
+                appExtObject.setIdentifier(identifier);
+                appExtObject.setAuthenticationCode(authenticationCode);
                 //this->appExt->setSubData(&dataSubBlocksObject);
-                this->appExt->dump();
+                appExtObject.dump();
                 //LOGD("            -sub block size : %ld\n",subblockContent.size());
                 unsigned char subBlockStr[subblockContent.size()];
                 for(int i = 0;i<subblockContent.size();i++){
@@ -138,8 +136,7 @@ void GIFParser::init()
                 seek += 1;
                 
                 GraphicControlExt gceObject(&compressByte,delayTime,transParentColorIndex);
-                this->currentGCE = &gceObject;
-                //this->currentGCE->dump();
+                gceObject.dump();
                 memcpy(&terminator, this->buffer + seek, 1);
                 seek += 1;
                 LOGD("--------------------------- graphic control extensin stop index %ld\n",seek);
@@ -169,10 +166,9 @@ void GIFParser::init()
             memcpy(&compressByte, this->buffer + seek, 1);
             seek += 1;
             ImageDescriptor imageDesObject(left,top,w,h,&compressByte);
-            this->currentImageDescriptor = &imageDesObject;
-            this->currentImageDescriptor->dump();
+            imageDesObject.dump();
             //不需要本地颜色表
-            if(!this->currentImageDescriptor->needLocalColorTable())
+            if(!imageDesObject.needLocalColorTable())
             {
                 LOGD("               -loading image data\n");
                 unsigned int miniCodeSize = 0;
@@ -226,6 +222,8 @@ char* GIFParser::getVersion()
 GIFParser::~GIFParser()
 {
     delete [] this->buffer;
+    delete this->gct;
+    delete this->lsd;
 }
 
 void GIFParser::putIdds(unsigned long gceStart, unsigned long gceStop, unsigned long imageDataStart,
@@ -241,14 +239,23 @@ unsigned long GIFParser::getIddSize()
 {
     return idds.size();
 }
-void GIFParser::seekIddsTo(unsigned long position)
+int GIFParser::getW() {
+    return this->lsd->getScreenWidth();
+}
+int GIFParser::getH() {
+    return this->lsd->getScreenHeigth();
+}
+OneFrame* GIFParser::seekIddsTo(unsigned long position)
 {
     LOGD("seek idd to : %ld\n",position );
     ImageDataDes idd = this->idds.at(position);
     GraphicControlExt *gce = getGce(idd);
-    gce->dump();
     IddStruct *iddStruct = getIddStruct(idd);
+    OneFrame *oneFrame = new OneFrame;
+    oneFrame->iddStruct = iddStruct;
+    oneFrame->graphicControlExt = gce;
 
+    return oneFrame;
 }
 GraphicControlExt* GIFParser::getGce(ImageDataDes &idd) {
     LOGD( "           -Graphic control extension \n");
@@ -269,13 +276,12 @@ GraphicControlExt* GIFParser::getGce(ImageDataDes &idd) {
     memcpy(&transParentColorIndex, this->buffer + vSeek, 1);
     vSeek += 1;
 
-    GraphicControlExt gceObject(&compressByte,delayTime,transParentColorIndex);
-    //this->currentGCE->dump();
+    GraphicControlExt *gceObject = new GraphicControlExt(&compressByte,delayTime,transParentColorIndex);
     unsigned int terminator = 0;
     memcpy(&terminator, this->buffer + vSeek, 1);
     vSeek += 1;
     LOGD("           -terminator : %d\n",terminator);
-    return &gceObject;
+    return gceObject;
 }
 
 IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
@@ -285,7 +291,7 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
     unsigned int top = 0;
     unsigned int w = 0;
     unsigned int h = 0;
-    struct IddStruct iddStruct;
+    struct IddStruct *iddStruct = new IddStruct;
     bitset<8> compressByte;
     memcpy(&left, buffer + vSeek, 2);
     vSeek += 2;
@@ -297,11 +303,10 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
     vSeek += 2;
     memcpy(&compressByte, this->buffer + vSeek, 1);
     vSeek += 1;
-    ImageDescriptor imageDesObject(left,top,w,h,&compressByte);
-    iddStruct.imageDescriptor = &imageDesObject;
-    iddStruct.imageDescriptor->dump();
+    ImageDescriptor *imageDesObject = new ImageDescriptor(left,top,w,h,&compressByte);
+    iddStruct->imageDescriptor = imageDesObject;
     //不需要本地颜色表
-    if(!iddStruct.imageDescriptor->needLocalColorTable())
+    if(!iddStruct->imageDescriptor->needLocalColorTable())
     {
         LOGD("               -loading image data\n");
         unsigned int miniCodeSize = 0;
@@ -311,22 +316,24 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
 
         unsigned int subBlockSize = 0;
         int totalSize = 0;
-        vector<unsigned int> bitmapArray;
+        vector<unsigned int> *bitmapArray = new vector<unsigned int>;
         do{
             memcpy(&subBlockSize, this->buffer + vSeek, 1);
-            LOGD("               -block size : %d\n",subBlockSize);
+            //LOGD("               -block size : %d\n",subBlockSize);
             vSeek += 1;
             if(subBlockSize != 0)
             {
-                char subBlockBuffer[subBlockSize];
+                unsigned char subBlockBuffer[subBlockSize];
                 memcpy(subBlockBuffer, buffer + vSeek, subBlockSize);
                 vSeek += subBlockSize;
                 for(int i = 0;i<subBlockSize;i++)
                 {
-                    int index = subBlockBuffer[i];
+                    unsigned  int index = subBlockBuffer[i];
                     unsigned int color = this->gct->getColorIntAt(index);
                     bitset<24> bColor(color);
-                    LOGD("index %d , color table index : %s\n " , i,bColor.to_string().c_str());
+                    bitmapArray->push_back(color);
+                    LOGD("index %d \n " , index);
+                    //LOGD("index %d , color table index : %s\n " , index,bColor.to_string().c_str());
                 }
                 totalSize += subBlockSize;
             }else{
@@ -334,18 +341,23 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
             }
 
         }while (subBlockSize == 255) ;
-        LOGD("               -total size : %d\n",totalSize);
+        iddStruct->bitmapArray = bitmapArray;
+
+        LOGD("               -total size : %ld\n",iddStruct->bitmapArray->size());
         unsigned int terminator = 0;
         memcpy(&terminator, this->buffer + vSeek, 1);
         vSeek += 1;
         LOGD("               -terminator : %d\n",terminator);
     }
-    return &iddStruct;
+    return iddStruct;
 }
 ///////////////////// LSD ////////////////////////////
 LSD::LSD(char *lsd)
 {
     this->lsdBuffer = lsd;
+}
+LSD::~LSD() {
+    delete[] lsdBuffer;
 }
 int LSD::getScreenWidth()
 {
@@ -387,11 +399,11 @@ void LSD::dump()
     LOGD("lsd is GCT here : %d\n",isGCT());
     LOGD("lsd global color table size : %d\n",getGlobalColorTableSize());
 }
-int LSD::getGlobalColorTableSize()
+size_t LSD::getGlobalColorTableSize()
 {
     bitset<8> byte = getCompressByte();
-    int count = byte.to_ulong() & 7;
-    return 1<<(count + 1);
+    size_t count = byte.to_ulong() & 7;
+    return (size_t)(1<<(count + 1));
 }
 bool LSD::isGCT()
 {
@@ -400,14 +412,17 @@ bool LSD::isGCT()
 }
 
 /////////////////////////////////// GCT
-GCT::GCT(char *buffer,int count)
+GCT::GCT(unsigned char *buffer,size_t count)
 {
     this->gct = buffer;
     this->count = count;
 }
+GCT::~GCT() {
+    delete[] this->gct;
+}
 void GCT::dump()
 {
-    LOGD(" global color table size : %d\n",count);
+    LOGD(" global color table size : %ld\n",count);
     int index = 0;
     for(int i = 0;i<=this->count - 3;i+=3){
         unsigned int r = this->gct[i] << 16;
@@ -419,10 +434,13 @@ void GCT::dump()
     }
 }
 unsigned int GCT::getColorIntAt(unsigned int position) {
-    LOGD(" try to get color at : %d\n",position);
+    //LOGD(" try to get color at : %d\n",position);
     unsigned int r = this->gct[position * 3] << 16;
     unsigned int g = this->gct[position*3+1] << 8;
     unsigned int b = this->gct[position*3+2] ;
+    //LOGD("r = %d ,g = %d ,b = %d",r,g,b);
+    bitset<24> color(r|g|b);
+    //LOGD("gct index : %d = %s",position,color.to_string().c_str());
     return (r|g|b);
 }
 ///////////////////////////////////// AppExt
@@ -478,6 +496,18 @@ ImageDescriptor::ImageDescriptor(unsigned int left,unsigned int top,unsigned int
 bool ImageDescriptor::needLocalColorTable()
 {
     return (*(this->compressByte)).to_ulong() & (1<<7);
+}
+unsigned int ImageDescriptor::getTop() {
+    return this->top;
+}
+unsigned int ImageDescriptor::getLeft() {
+    return this->left;
+}
+unsigned int ImageDescriptor::getW() {
+    return this->w;
+}
+unsigned int ImageDescriptor::getH() {
+    return this->h;
 }
 void ImageDescriptor::dump()
 {

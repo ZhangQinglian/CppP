@@ -21,6 +21,7 @@ private:
     char *lsdBuffer;
 public:
     LSD(char*);
+    ~LSD();
     //图像宽
     int getScreenWidth();
     //图像高度
@@ -32,7 +33,7 @@ public:
     //图像宽高比
     int getRadio();
     //获得全局颜色表的长度
-    int getGlobalColorTableSize();
+    size_t getGlobalColorTableSize();
     //是否存在全局颜色表
     bool isGCT();
     void dump();
@@ -42,10 +43,11 @@ public:
 class GCT
 {
 private:
-    char *gct;
-    int count;
+    unsigned char *gct;
+    size_t count;
 public :
-    GCT(char*,int);
+    GCT(unsigned char*,size_t);
+    ~GCT();
     void dump();
     unsigned int getColorIntAt(unsigned int);
 };
@@ -96,6 +98,10 @@ public:
     ImageDescriptor(unsigned int,unsigned int,unsigned int,unsigned int,bitset<8>*);
     bool needLocalColorTable();
     void dump();
+    unsigned int getLeft();
+    unsigned int getTop();
+    unsigned int getW();
+    unsigned int getH();
 };
 ///////////////////////////////// Image Data Descriptor (本程序自定义，并非gif协议中的类型)
 class ImageDataDes
@@ -116,7 +122,12 @@ public:
 ////////////////////////////// idd struct
 struct IddStruct{
     ImageDescriptor *imageDescriptor;
-    vector<unsigned int > bitmapArray;
+    vector<unsigned int > *bitmapArray;
+};
+////////////////////////////// Frame
+struct OneFrame{
+    GraphicControlExt *graphicControlExt;
+    IddStruct *iddStruct;
 };
 ///////////////////////////////// Parser
 class GIFParser
@@ -129,7 +140,9 @@ public:
     char* getVersion();
     void putIdds(unsigned long, unsigned long, unsigned long, unsigned long);
     unsigned long getIddSize();
-    void seekIddsTo(unsigned long);
+    OneFrame* seekIddsTo(unsigned long);
+    int getW();
+    int getH();
 private:
     char *buffer;
     long gifSize;
@@ -139,9 +152,6 @@ private:
     char version[4] = {0};
     LSD *lsd;
     GCT *gct;
-    AppExt *appExt;
-    GraphicControlExt *currentGCE;
-    ImageDescriptor *currentImageDescriptor;
     vector<ImageDataDes> idds;
     GraphicControlExt* getGce(ImageDataDes&);
     IddStruct* getIddStruct(ImageDataDes&);
