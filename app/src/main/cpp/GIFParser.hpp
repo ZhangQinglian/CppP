@@ -143,6 +143,7 @@ public:
     OneFrame* seekIddsTo(unsigned long);
     int getW();
     int getH();
+    int parseBinary (char const * const);
 private:
     char *buffer;
     long gifSize;

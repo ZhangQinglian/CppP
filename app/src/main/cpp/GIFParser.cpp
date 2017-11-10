@@ -9,6 +9,8 @@
 #include "GIFParser.hpp"
 #include <android/log.h>
 #include <list>
+#include <string>
+#include <cmath>
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,"gif",__VA_ARGS__)
 GIFParser::GIFParser(char *buffer,long size)
 {
@@ -180,7 +182,7 @@ void GIFParser::init()
                 int totalSize = 0;
                 do{
                     memcpy(&subBlockSize, this->buffer + seek, 1);
-                    //LOGD("               -block size : %d\n",subBlockSize);
+                    LOGD("               -block size : %d\n",subBlockSize);
                     seek += 1;
                     if(subBlockSize != 0)
                     {
@@ -317,22 +319,25 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
         unsigned int subBlockSize = 0;
         int totalSize = 0;
         vector<unsigned int> *bitmapArray = new vector<unsigned int>;
+        string *lzwStr = new string();
+
         do{
             memcpy(&subBlockSize, this->buffer + vSeek, 1);
-            //LOGD("               -block size : %d\n",subBlockSize);
+            LOGD("               -block size : %d\n",subBlockSize);
             vSeek += 1;
             if(subBlockSize != 0)
             {
-                unsigned char subBlockBuffer[subBlockSize];
+                unsigned char *subBlockBuffer = new unsigned char[subBlockSize];
                 memcpy(subBlockBuffer, buffer + vSeek, subBlockSize);
                 vSeek += subBlockSize;
-                for(int i = 0;i<subBlockSize;i++)
+                for(int i = subBlockSize;i>0;i--)
                 {
-                    unsigned  int index = subBlockBuffer[i];
-                    unsigned int color = this->gct->getColorIntAt(index);
-                    bitset<24> bColor(color);
-                    bitmapArray->push_back(color);
-                    LOGD("index %d \n " , index);
+                    unsigned char data = subBlockBuffer[i-1];
+                    //unsigned int color = this->gct->getColorIntAt(index);
+                    bitset<8> bColor(data);
+                    //bitmapArray->push_back(color);
+                    lzwStr->append(bColor.to_string().c_str());
+                    LOGD("%s",bColor.to_string().c_str());
                     //LOGD("index %d , color table index : %s\n " , index,bColor.to_string().c_str());
                 }
                 totalSize += subBlockSize;
@@ -342,7 +347,23 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
 
         }while (subBlockSize == 255) ;
         iddStruct->bitmapArray = bitmapArray;
+        LOGD("%s",lzwStr->c_str());
+        size_t readedLen = 0;
 
+        while (readedLen<lzwStr->length()){
+
+            if(lzwStr->length() - readedLen >= 4){
+                string sub = lzwStr->substr(readedLen,4);
+                int index = parseBinary(sub.c_str());
+                LOGD("sub str : %s = %d",sub.c_str(),index);
+            } else{
+                string sub = lzwStr->substr(readedLen,lzwStr->length() - readedLen);
+                int index = parseBinary(sub.c_str());
+                LOGD("sub str : %s = %d",sub.c_str(),index);
+            }
+
+            readedLen += 4;
+        }
         LOGD("               -total size : %ld\n",iddStruct->bitmapArray->size());
         unsigned int terminator = 0;
         memcpy(&terminator, this->buffer + vSeek, 1);
@@ -350,6 +371,44 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
         LOGD("               -terminator : %d\n",terminator);
     }
     return iddStruct;
+}
+int GIFParser::parseBinary (char const * const binaryString)
+
+{
+
+//在此处调用判断一个字符串有多长的函数
+
+    size_t size = strlen( binaryString);
+
+//将字符串的二进制数字取出，减去48，转换为int型，并保存在新的数组binary内。
+
+    int * binary = new int [size];
+
+    for (size_t i = size ; i >0; i--)
+
+    {
+
+        int temp = *(binaryString + i-1) - 48;
+        *(binary + size - i) = temp;
+
+    }
+
+//将二进制数字转换为十进制
+
+    int parseBinary = 0;
+
+    for (int i = 0; i < size; i++)
+
+    {
+
+        parseBinary += pow( (*(binary + i) * 2.0), i );
+
+    }
+    if(*(binary + 0) == 0){
+        parseBinary--;
+    }
+    return parseBinary;
+
 }
 ///////////////////// LSD ////////////////////////////
 LSD::LSD(char *lsd)
