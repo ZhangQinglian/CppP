@@ -9,7 +9,10 @@
 #include "GIFParser.hpp"
 #include <android/log.h>
 #include <list>
+#include <vector>
+#include <map>
 #include <string>
+#include <sstream>
 #include <cmath>
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,"gif",__VA_ARGS__)
 GIFParser::GIFParser(char *buffer,long size)
@@ -321,24 +324,24 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
         vector<unsigned int> *bitmapArray = new vector<unsigned int>;
         string *lzwStr = new string();
 
+
         do{
             memcpy(&subBlockSize, this->buffer + vSeek, 1);
             LOGD("               -block size : %d\n",subBlockSize);
+
             vSeek += 1;
             if(subBlockSize != 0)
             {
                 unsigned char *subBlockBuffer = new unsigned char[subBlockSize];
                 memcpy(subBlockBuffer, buffer + vSeek, subBlockSize);
                 vSeek += subBlockSize;
+
                 for(int i = subBlockSize;i>0;i--)
                 {
                     unsigned char data = subBlockBuffer[i-1];
-                    //unsigned int color = this->gct->getColorIntAt(index);
                     bitset<8> bColor(data);
-                    //bitmapArray->push_back(color);
                     lzwStr->append(bColor.to_string().c_str());
                     LOGD("%s",bColor.to_string().c_str());
-                    //LOGD("index %d , color table index : %s\n " , index,bColor.to_string().c_str());
                 }
                 totalSize += subBlockSize;
             }else{
@@ -348,22 +351,105 @@ IddStruct* GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
         }while (subBlockSize == 255) ;
         iddStruct->bitmapArray = bitmapArray;
         LOGD("%s",lzwStr->c_str());
-        size_t readedLen = 0;
 
-        while (readedLen<lzwStr->length()){
 
-            if(lzwStr->length() - readedLen >= 4){
-                string sub = lzwStr->substr(readedLen,4);
-                int index = parseBinary(sub.c_str());
-                LOGD("sub str : %s = %d",sub.c_str(),index);
+        size_t readedLen = lzwStr->size();
+        int startCodeSize = miniCodeSize + 1;
+        int currentCode;
+        int preCode ;
+        string colorIndex;
+        map<int,string> codeTable;
+        for(int i = 0;i< (1<<miniCodeSize);i++){
+            stringstream s;
+            s << i;
+            codeTable[i] = s.str();
+        }
+        int clearCode = 1 << miniCodeSize;
+        int infoCode = (1 << miniCodeSize) + 1;
+        int nextCode = (1 << miniCodeSize )+ 2;
+        LOGD("start code size : %d",startCodeSize);
+        LOGD("read line size : %d",readedLen);
+
+        // first clean code
+        string sub = lzwStr->substr(readedLen - startCodeSize,startCodeSize);
+        int code = parseBinary(sub.c_str());
+        readedLen -= startCodeSize;
+        if(code == clearCode)
+        {
+            LOGD("find clear code : %s",sub.c_str());
+        }
+        // init
+        sub = lzwStr->substr(readedLen - startCodeSize,startCodeSize);
+        code = parseBinary(sub.c_str());
+        readedLen -= startCodeSize;
+        stringstream s;
+        s << code;
+        colorIndex+=s.str();
+        colorIndex+=",";
+        preCode = code;
+        LOGD("init index is : %d",code);
+        while (readedLen > 0){
+
+
+            if(readedLen >= startCodeSize){
+                sub = lzwStr->substr(readedLen - startCodeSize,startCodeSize);
             } else{
-                string sub = lzwStr->substr(readedLen,lzwStr->length() - readedLen);
-                int index = parseBinary(sub.c_str());
-                LOGD("sub str : %s = %d",sub.c_str(),index);
+                sub = lzwStr->substr(0,readedLen);
+            }
+            currentCode = parseBinary(sub.c_str());
+            LOGD("current code : %d,current str : %s",currentCode,sub.c_str());
+            if(currentCode == infoCode){
+                break;
+            }
+            map<int,string>::iterator it = codeTable.find(currentCode);
+            string k = "";
+            if(it == codeTable.end()){
+                //LOGD("%d not in color table",currentCode);
+                if(preCode < clearCode){
+                    stringstream s;
+                    s<<preCode;
+                    k+=s.str();
+                    k+=",";
+                    k+=s.str();
+                } else{
+                    string preCodeStr = codeTable.at(preCode);
+                    k = preCodeStr;
+                    k += ",";
+                    k += preCodeStr.at(0);
+                }
+                colorIndex += k;
+                colorIndex += ",";
+            } else{
+                string currentCodeStr = codeTable.at(currentCode);
+                if(preCode < clearCode){
+                    stringstream s;
+                    s << preCode;
+                    k += s.str();
+                    k += ",";
+                    k+= currentCodeStr[0];
+                } else{
+                    string preCodeStr = codeTable.at(preCode);
+                    k = preCodeStr;
+                    k += ",";
+                    k += currentCodeStr[0];
+                }
+                colorIndex += currentCodeStr;
+                colorIndex += ",";
+                //LOGD("%d in color table",currentCode);
             }
 
-            readedLen += 4;
+            codeTable[nextCode] = k;
+            //LOGD("code size : %d , nextCode : %d",startCodeSize,nextCode);
+            readedLen -= startCodeSize;
+            preCode = currentCode;
+            nextCode +=1;
+            if(nextCode == ((1 << startCodeSize) )){
+                startCodeSize += 1;
+            }
         }
+
+        LOGD("index stream is %s",colorIndex.c_str());
+
         LOGD("               -total size : %ld\n",iddStruct->bitmapArray->size());
         unsigned int terminator = 0;
         memcpy(&terminator, this->buffer + vSeek, 1);
