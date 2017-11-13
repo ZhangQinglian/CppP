@@ -84,6 +84,7 @@ private:
 public :
     GraphicControlExt(bitset<8>*,int,unsigned int);
     unsigned int getTransparentInde();
+    bool shouldSkip();
     void dump();
 };
 ///////////////////////////////// Image Descriptor

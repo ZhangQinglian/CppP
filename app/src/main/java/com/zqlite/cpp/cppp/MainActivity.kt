@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
 
 
         Thread(Runnable {
-            val inputStram = assets.open("c.GIF")
+            val inputStram = assets.open("b.GIF")
             val bos = ByteArrayOutputStream()
             val buffer = ByteArray(1024)
             var len: Int
@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("gif", "gif parser address : " + gifParserAddress)
     }
 
-    fun drawOneFrame(top: Int, left: Int, w: Int, h: Int, bitmapArray: IntArray,transparentColor :Int) {
+    fun drawOneFrame(top: Int, left: Int, w: Int, h: Int, bitmapArray: IntArray,transparentColor :Int,shouldSkip:Boolean) {
         Log.d("gif", "top = " + top)
         Log.d("gif", "left = " + left)
         Log.d("gif", "w = " + w)
@@ -85,10 +85,15 @@ class MainActivity : AppCompatActivity() {
                 val index = W * i + j
                 if(tmpIndex < bitmapArray.size){
                     val color = bitmapArray[tmpIndex]
-                    if(color != transparentColor){
-                        mBitmapArray!![index] = color
+                    if(shouldSkip){
+                        if(color != transparentColor){
+                            mBitmapArray!![index] = color
 
+                        }
+                    }else{
+                        mBitmapArray!![index] = color
                     }
+
                     //Log.d("gif","top = $top , left = $left , w = $w , h = $h ,   i = $i , j = $j , tmpIndex = $tmpIndex  ，color = ${Integer.toBinaryString(color)}")
                 }
 

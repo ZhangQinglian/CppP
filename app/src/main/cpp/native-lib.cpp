@@ -70,7 +70,15 @@ JNIEXPORT void JNICALL Java_com_zqlite_cpp_cppp_MainActivity_seekIddTo(
         //LOGD("    color = %d",carr[i]);
     }
     jclass clazz = env->GetObjectClass(obj);
-    jmethodID drawOneFrameId = env->GetMethodID(clazz,"drawOneFrame","(IIII[II)V");
-    env->CallVoidMethod(obj,drawOneFrameId,top,left,w,h,bitmapArray,transparentColor);
+    jmethodID drawOneFrameId = env->GetMethodID(clazz,"drawOneFrame","(IIII[IIZ)V");
+    env->CallVoidMethod(obj,
+                        drawOneFrameId,
+                        top,
+                        left,
+                        w,
+                        h,
+                        bitmapArray,
+                        transparentColor,
+                        oneFrame->graphicControlExt->shouldSkip());
 
 }
