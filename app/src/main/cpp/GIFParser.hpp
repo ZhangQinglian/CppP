@@ -145,6 +145,7 @@ public:
     int getW();
     int getH();
     int parseBinary (char const * const);
+    GCT *getGCT();
 private:
     char *buffer;
     long gifSize;

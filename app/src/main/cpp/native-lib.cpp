@@ -51,6 +51,7 @@ JNIEXPORT void JNICALL Java_com_zqlite_cpp_cppp_MainActivity_seekIddTo(
     GIFParser *gifParser = (GIFParser *)gifParserAddress;
     LOGD("signature %s\n",gifParser->getSignature());
     OneFrame *oneFrame = gifParser->seekIddsTo(iddPosition);
+    unsigned int transparentColor = gifParser->getGCT()->getColorIntAt(oneFrame->graphicControlExt->getTransparentInde());
     oneFrame->graphicControlExt->dump();
     unsigned int top = oneFrame->iddStruct->imageDescriptor->getTop();
     unsigned int left = oneFrame->iddStruct->imageDescriptor->getLeft();
@@ -69,7 +70,7 @@ JNIEXPORT void JNICALL Java_com_zqlite_cpp_cppp_MainActivity_seekIddTo(
         //LOGD("    color = %d",carr[i]);
     }
     jclass clazz = env->GetObjectClass(obj);
-    jmethodID drawOneFrameId = env->GetMethodID(clazz,"drawOneFrame","(IIII[I)V");
-    env->CallVoidMethod(obj,drawOneFrameId,top,left,w,h,bitmapArray);
+    jmethodID drawOneFrameId = env->GetMethodID(clazz,"drawOneFrame","(IIII[II)V");
+    env->CallVoidMethod(obj,drawOneFrameId,top,left,w,h,bitmapArray,transparentColor);
 
 }

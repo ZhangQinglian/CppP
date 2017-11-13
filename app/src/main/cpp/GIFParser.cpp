@@ -504,6 +504,9 @@ int GIFParser::parseBinary(char const *const binaryString) {
 
 }
 
+GCT* GIFParser::getGCT() {
+    return gct;
+}
 ///////////////////// LSD ////////////////////////////
 LSD::LSD(char *lsd) {
     this->lsdBuffer = lsd;
