@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
 
 
         Thread(Runnable {
-            val inputStram = assets.open("d.gif")
+            val inputStram = assets.open("c.GIF")
             val bos = ByteArrayOutputStream()
             val buffer = ByteArray(1024)
             var len: Int
