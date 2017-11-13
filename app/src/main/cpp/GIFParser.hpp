@@ -80,9 +80,10 @@ class GraphicControlExt
 private:
     bitset<8> *compressByte;
     int delayTime = 0;
-    int transparentColorIndex = 0;
+    unsigned int transparentColorIndex = 0;
 public :
-    GraphicControlExt(bitset<8>*,int,int);
+    GraphicControlExt(bitset<8>*,int,unsigned int);
+    unsigned int getTransparentInde();
     void dump();
 };
 ///////////////////////////////// Image Descriptor

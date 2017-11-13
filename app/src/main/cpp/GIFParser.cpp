@@ -122,8 +122,7 @@ void GIFParser::init() {
             {
 
                 LOGD("           -Graphic control extension \n");
-                LOGD("--------------------------- graphic control extensin start index %ld\n",
-                     seek);
+                //LOGD("--------------------------- graphic control extensin start index %ld\n", seek);
                 gceStart = seek;
                 int blockSize = 0;
                 memcpy(&blockSize, this->buffer + seek, 1);
@@ -145,7 +144,7 @@ void GIFParser::init() {
                 gceObject.dump();
                 memcpy(&terminator, this->buffer + seek, 1);
                 seek += 1;
-                LOGD("--------------------------- graphic control extensin stop index %ld\n", seek);
+                //LOGD("--------------------------- graphic control extensin stop index %ld\n", seek);
                 gceStop = seek;
                 LOGD("           -terminator : %d\n", terminator);
                 continue;
@@ -154,7 +153,7 @@ void GIFParser::init() {
         if (introducer == 0x2c) // image descriptor
         {
             LOGD("       -this block is an image descriptor\n");
-            LOGD("--------------------------- image descriptor start index %ld\n", seek);
+            //LOGD("--------------------------- image descriptor start index %ld\n", seek);
             imageDataStart = seek;
             unsigned int left = 0;
             unsigned int top = 0;
@@ -201,7 +200,7 @@ void GIFParser::init() {
                 //LOGD("               -total size : %d\n",totalSize);
                 memcpy(&terminator, this->buffer + seek, 1);
                 seek += 1;
-                LOGD("--------------------------- image descriptor stop index %ld\n", seek);
+                //LOGD("--------------------------- image descriptor stop index %ld\n", seek);
                 imageDataStop = seek;
                 this->putIdds(gceStart, gceStop, imageDataStart, imageDataStop);
                 LOGD("               -terminator : %d\n", terminator);
@@ -630,12 +629,15 @@ void DataSubBlocks::dump() {
 
 ///////////////////////////////////// Graphic control extension
 GraphicControlExt::GraphicControlExt(bitset<8> *compressByte, int delayTime,
-                                     int transparentColorIndex) {
+                                     unsigned int transparentColorIndex) {
     this->compressByte = compressByte;
     this->delayTime = delayTime;
     this->transparentColorIndex = transparentColorIndex;
 }
 
+unsigned int GraphicControlExt::getTransparentInde() {
+    return this->transparentColorIndex;
+}
 void GraphicControlExt::dump() {
     LOGD("GraphicControlExt compress byte : %s\n", this->compressByte->to_string().c_str());
     LOGD("GraphicControlExt delay time : %d\n", delayTime);
