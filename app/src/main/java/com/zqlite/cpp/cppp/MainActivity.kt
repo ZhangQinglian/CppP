@@ -7,6 +7,7 @@ import android.util.Log
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.ByteArrayOutputStream
 import java.util.*
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
@@ -43,7 +44,8 @@ class MainActivity : AppCompatActivity() {
                 if (currentSeek == seekSize) {
                     currentSeek = 0
                 }
-                seekIddTo(currentSeek, gifParserAddress)
+                    seekIddTo(currentSeek, gifParserAddress)
+
             }
 
         }
@@ -53,7 +55,7 @@ class MainActivity : AppCompatActivity() {
                 if (currentSeek < 0) {
                     currentSeek = 0
                 }
-                seekIddTo(currentSeek, gifParserAddress)
+                    seekIddTo(currentSeek, gifParserAddress)
             }
         }
     }
@@ -71,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("gif", "gif parser address : " + gifParserAddress)
     }
 
-    fun drawOneFrame(top: Int, left: Int, w: Int, h: Int, bitmapArray: IntArray,transparentColor :Int,shouldSkip:Boolean) {
+    fun drawOneFrame(top: Int, left: Int, w: Int, h: Int, bitmapArray: IntArray,transparentColor :Int,shouldSkip:Boolean,tobeDelete:Long) {
         Log.d("gif", "top = " + top)
         Log.d("gif", "left = " + left)
         Log.d("gif", "w = " + w)
@@ -102,7 +104,8 @@ class MainActivity : AppCompatActivity() {
 
         }
         val bitmap: Bitmap = Bitmap.createBitmap(mBitmapArray, W, H, Bitmap.Config.RGB_565)
-        imageView.setImageBitmap(bitmap)
+            imageView.setImageBitmap(bitmap)
+            delete(tobeDelete)
     }
 
     /**
@@ -113,7 +116,7 @@ class MainActivity : AppCompatActivity() {
 
     external fun initGif(gifBytes: ByteArray, size: Int)
     external fun seekIddTo(position: Long, gifAddress: Long)
-
+    external fun delete(pointer:Long)
     companion object {
 
         // Used to load the 'native-lib' library on application startup.

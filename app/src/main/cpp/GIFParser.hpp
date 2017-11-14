@@ -86,6 +86,7 @@ public :
     unsigned int getTransparentInde();
     bool shouldSkip();
     void dump();
+    void release();
 };
 ///////////////////////////////// Image Descriptor
 class ImageDescriptor
@@ -104,6 +105,7 @@ public:
     unsigned int getTop();
     unsigned int getW();
     unsigned int getH();
+    void release();
 };
 ///////////////////////////////// Image Data Descriptor (本程序自定义，并非gif协议中的类型)
 class ImageDataDes

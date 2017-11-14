@@ -320,10 +320,10 @@ IddStruct *GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
         int totalSize = 0;
         vector<unsigned int> *bitmapArray = new vector<unsigned int>;
 
-        string *lzwStr = new string();
+        string lzwStr;
 
         do {
-            string *lzwPartStr = new string();
+            string lzwPartStr;
             memcpy(&subBlockSize, this->buffer + vSeek, 1);
             //LOGD("               -block size : %d\n", subBlockSize);
 
@@ -336,21 +336,22 @@ IddStruct *GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
                 for (int i = subBlockSize; i > 0; i--) {
                     unsigned char data = subBlockBuffer[i - 1];
                     bitset<8> bColor(data);
-                    lzwPartStr->append(bColor.to_string().c_str());
+                    lzwPartStr.append(bColor.to_string().c_str());
                     //LOGD("%s", bColor.to_string().c_str());
                 }
                 totalSize += subBlockSize;
+                delete[] subBlockBuffer;
             } else {
                 vSeek -= 1;
             }
-            lzwPartStr->append(*lzwStr);
+            lzwPartStr.append(lzwStr);
             lzwStr = lzwPartStr;
         } while (subBlockSize == 255);
         iddStruct->bitmapArray = bitmapArray;
         //LOGD("%s", lzwStr->c_str());
 
 
-        size_t readedLen = lzwStr->size();
+        size_t readedLen = lzwStr.size();
         int startCodeSize = miniCodeSize + 1;
         int currentCode;
         int preCode;
@@ -368,14 +369,14 @@ IddStruct *GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
         //LOGD("read line size : %d", readedLen);
 
         // first clean code
-        string sub = lzwStr->substr(readedLen - startCodeSize, startCodeSize);
+        string sub = lzwStr.substr(readedLen - startCodeSize, startCodeSize);
         int code = parseBinary(sub.c_str());
         readedLen -= startCodeSize;
         if (code == clearCode) {
             //LOGD("find clear code : %s", sub.c_str());
         }
         // init
-        sub = lzwStr->substr(readedLen - startCodeSize, startCodeSize);
+        sub = lzwStr.substr(readedLen - startCodeSize, startCodeSize);
         readedLen-=startCodeSize;
         code = parseBinary(sub.c_str());
         colorIndex.push_back(code);
@@ -385,9 +386,9 @@ IddStruct *GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
 
 
             if (readedLen >= startCodeSize) {
-                sub = lzwStr->substr(readedLen - startCodeSize, startCodeSize);
+                sub = lzwStr.substr(readedLen - startCodeSize, startCodeSize);
             } else {
-                sub = lzwStr->substr(0, readedLen);
+                sub = lzwStr.substr(0, readedLen);
             }
             readedLen -= startCodeSize;
             currentCode = parseBinary(sub.c_str());
@@ -409,7 +410,7 @@ IddStruct *GIFParser::getIddStruct(ImageDataDes &imageDataDes) {
                 clearCode = 1 << miniCodeSize;
                 infoCode = (1 << miniCodeSize) + 1;
                 nextCode = (1 << miniCodeSize) + 2;
-                sub = lzwStr->substr(readedLen - startCodeSize, startCodeSize);
+                sub = lzwStr.substr(readedLen - startCodeSize, startCodeSize);
                 readedLen-=startCodeSize;
                 code = parseBinary(sub.c_str());
                 colorIndex.push_back(code);
@@ -496,6 +497,7 @@ int GIFParser::parseBinary(char const *const binaryString) {
     if (*(binary + 0) == 0) {
         parseBinary--;
     }
+    delete[] binary;
     return parseBinary;
 
 }
@@ -648,7 +650,9 @@ void GraphicControlExt::dump() {
     LOGD("GraphicControlExt delay time : %d\n", delayTime);
     LOGD("GraphicControlExt transparent color index : %d\n", transparentColorIndex);
 }
-
+void GraphicControlExt::release() {
+    delete compressByte;
+}
 ///////////////////////////////////// Image desciptor
 ImageDescriptor::ImageDescriptor(unsigned int left, unsigned int top, unsigned int w,
                                  unsigned int h, bitset<8> *compressByte) {
@@ -687,7 +691,9 @@ void ImageDescriptor::dump() {
     LOGD("Image descriptor compressByte : %s\n", this->compressByte->to_string().c_str());
     LOGD("Image descriptor need local color table : %d\n", needLocalColorTable());
 }
-
+void ImageDescriptor::release() {
+    delete compressByte;
+}
 ////////////////////////////////////// Image data descriptor
 ImageDataDes::ImageDataDes(unsigned long gceStart, unsigned long gceStop,
                            unsigned long imageDataStart, unsigned long imageDataStop) {
